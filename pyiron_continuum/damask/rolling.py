@@ -181,6 +181,12 @@ class ROLLING(DAMASK):
         # rgg.write_RegriddedHDF5(self.working_directory,self.geom_name, self.regrid_geom_name, self.load_name, increment_title, map_0to_rg, cells_rg)
 
         # self.regrid_hdf5file = f'{self.geom_name}_regridded_{increment_title}_{self.load_name}_material_restart.hdf5'
+    
+    def writeGrainInfo(self):
+        print('working direction is:', self.working_directory)
+        os.chdir(self.working_directory)  # cd into the working dir
+        self.grid.save_ASCII('DamaskGrains.txt')
+        print('Save grain info to DamaskGrains.txt')
 
     # def run_rolling(self):
     #     print('working direction is:', self.working_directory)
