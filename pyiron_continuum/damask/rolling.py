@@ -15,6 +15,7 @@ from damaskjob import DAMASK
 import regrid as rgg
 from damask import Result
 from damask import Config
+from damask import Grid
 from factory import DamaskLoading
 
 
@@ -151,6 +152,7 @@ class ROLLING(DAMASK):
             subprocess.run(args, shell=True, capture_output=True)
             print('Rolling-%d test is done !' % (self.RollingInstance))
             self.ResultsFile.append(f'{self.geom_name}_{self.load_name}_material.hdf5')
+        self._grid=Grid.load(f'{self.geom_name}.vti')
 
     def postProcess(self):
         self._results = Result(f'{self.geom_name}_{self.load_name}_material.hdf5')
@@ -403,7 +405,7 @@ class ROLLING(DAMASK):
     ########################################################################
     ### for openphase
     ########################################################################
-    def write_openphase_config(self, step, dt):
+    def write_openphase_config(self, step, dt, nuclei):
         """
         write the configuration file for openphase
         """
@@ -411,71 +413,70 @@ class ROLLING(DAMASK):
         Standard Open Phase Input File
 !!!All values in MKS (or properly scaled) units please!!!
 
-$SimTtl         Simulation Title                        : Normal grain growth
-$nSteps         Number of Time Steps                    : %8d
-$FTime          Output to disk every (tSteps)           : 100
-$STime          Output to screen every (tSteps)         : 100
-$LUnits         Units of length                         : m
-$TUnits         Units of time                           : s
-$MUnits         Units of mass                           : kg
-$EUnits         Energy units                            : J
-$Nx             System Size in X Direction              : %d
-$Ny             System Size in Y Direction              : %d
-$Nz             System Size in Z Direction              : %d
-$dt             Initial Time Step                       : %14.5e
-$IWidth         Interface Width (in grid points)        : 4.5
-$dx             Grid Spacing                            : %14.5e
-$nOMP           Number of OpenMP Threads                : 12
-$Restrt         Restart switch (Yes/No)                 : No
-$tStart         Restart at time step                    : 0
-$tRstrt         Restart output every (tSteps)           : 10000
+@RunTimeControl
 
+$SimTtl   Simulation Title                          : Normal grain growth
+$nSteps   Number of Time Steps                      : %d
+$FTime    Output to disk every (tSteps)             : 100
+$STime    Output to screen every (tSteps)           : 100
+$LUnits   Units of length                           : m
+$TUnits   Units of time                             : s
+$MUnits   Units of mass                             : kg
+$EUnits   Energy units                              : J
+$dt       Initial Time Step                         : %14.5e
+$nOMP     Number of OpenMP Threads                  : 4
+$Restrt   Restart switch (Yes/No)                   : No
+$tStart   Restart at time step                      : 0
+$tRstrt   Restart output every (tSteps)             : 10000
 
+@Settings
 
-@ChemicalProperties
+$Nx       System Size in X Direction                : %d
+$Ny       System Size in Y Direction                : %d
+$Nz       System Size in Z Direction                : %d
+$IWidth   Interface Width (in grid points)          : 5.0
+$dx       Grid Spacing                              : %14.5e
 
-$Phase_0  Name of Phase 0     :   Phase1
+$Phase_0  Name of Phase 0                           : Phase1
 
+@InterfaceProperties
 
+$EnergyModel_0_0    Interface energy model          : ISO
+$Sigma_0_0          Interface energy                : 0.24
+
+$MobilityModel_0_0  Interface energy model          : ISO
+$Mu_0_0             Interface mobility              : 1.0e-7
 
 @BoundaryConditions
 
-Boundary Conditions Input Parameters:
+$BC0X   X axis beginning boundary condition         : Periodic
+$BCNX   X axis far end boundary condition           : Periodic
 
-$BC0X   X axis beginning boundary condition  : Periodic
-$BCNX   X axis far end boundary condition    : Periodic
+$BC0Y   Y axis beginning boundary condition         : Periodic
+$BCNY   Y axis far end boundary condition           : Periodic
 
-$BC0Y   Y axis beginning boundary condition  : Periodic
-$BCNY   Y axis far end boundary condition    : Periodic
-
-$BC0Z   Z axis beginning boundary condition  : Periodic
-$BCNZ   Z axis far end boundary condition    : Periodic
-
-
-
-@InterfaceEnergy
-
-$Sigma_0_0  Interface energy       : 0.24
-$Eps_0_0    Interface anisotropy  : 0.0
-
-
-
-@InterfaceMobility
-
-$Mu_0_0      Interface mobility      : 4.0e-9
-$Eps_0_0     Interface anisotropy    : 0.0
-$AE_0_0      Activation energy       : 0.0
-        """ % (step, self._grid.cells[0], self._grid.cells[1], self._grid.cells[2], dt, np.min(self._grid.size))
+$BC0Z   Z axis beginning boundary condition         : Periodic
+$BCNZ   Z axis far end boundary condition           : Periodic
+        """ % (step,dt,self._grid.cells[0], self._grid.cells[1], self._grid.cells[2], np.min(self._grid.size))
 
         print('min size is:', np.min(self._grid.size))
         self.openphase_config = str
         cwd = os.getcwd()  # get the current dir
         os.chdir(self.working_directory)  # cd into the working dir
+        # save openphase config file
         inp = open('ProjectInput.opi', 'w+')
         inp.write(self.openphase_config)
         inp.close()
-        self._grid.save_ASCII('openphase.grains')
-        self._grid.save('openphase.vti', compress=False)
+        self._grid.save_ASCII('DamaskGrains.txt')# save grain id of damask RVE
+
+        inp=open('RX.conf','w+') # save configuration info for RX-app
+
+        txt="hdf5=%s_%s_material.hdf5\n"%(self.geom_name,self.load_name)
+        inp.write(txt)
+        txt="nuclei=%d\n"%(nuclei)
+        inp.write(txt)
+        inp.close()
+        
         os.chdir(cwd)  # cd back to the notebook dir
 
     def run_openphase(self):
@@ -484,8 +485,7 @@ $AE_0_0      Activation energy       : 0.0
         """
         cwd = os.getcwd()  # get the current dir
         os.chdir(self.working_directory)  # cd into the working dir
-        import subprocess
         print("running openphase from ", os.getcwd())
-        args = "Recrystallization ProjectInput.opi > openphase.log"
+        args = "RX-app ProjectInput.opi > openphase.log"
         subprocess.run(args, shell=True, capture_output=True)
         os.chdir(cwd)  # cd back to the notebook dir
