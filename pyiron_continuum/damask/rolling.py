@@ -424,7 +424,7 @@ $TUnits   Units of time                             : s
 $MUnits   Units of mass                             : kg
 $EUnits   Energy units                              : J
 $dt       Initial Time Step                         : %14.5e
-$nOMP     Number of OpenMP Threads                  : 4
+$nOMP     Number of OpenMP Threads                  : 16
 $Restrt   Restart switch (Yes/No)                   : No
 $tStart   Restart at time step                      : 0
 $tRstrt   Restart output every (tSteps)             : 10000
@@ -438,6 +438,11 @@ $IWidth   Interface Width (in grid points)          : 5.0
 $dx       Grid Spacing                              : %14.5e
 
 $Phase_0  Name of Phase 0                           : Phase1
+$Resolution                                         : Single
+
+@DrivingForce 
+$Average  Driving Force Averaging                   : Yes
+$CutOff                                             : 0.95      
 
 @InterfaceProperties
 
