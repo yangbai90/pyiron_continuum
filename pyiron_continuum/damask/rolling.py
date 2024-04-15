@@ -405,7 +405,7 @@ class ROLLING(DAMASK):
     ########################################################################
     ### for openphase
     ########################################################################
-    def write_openphase_config(self, step, dt, nuclei):
+    def write_openphase_config(self, step, dt, nuclei, dG):
         """
         write the configuration file for openphase
         """
@@ -479,6 +479,8 @@ $BCNZ   Z axis far end boundary condition           : Periodic
         txt="hdf5=%s_%s_material.hdf5\n"%(self.geom_name,self.load_name)
         inp.write(txt)
         txt="nuclei=%d\n"%(nuclei)
+        inp.write(txt)
+        txt="dG=%14.5e\n"%(dG)
         inp.write(txt)
         inp.close()
         
