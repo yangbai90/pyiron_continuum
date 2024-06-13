@@ -353,6 +353,7 @@ class ROLLING(DAMASK):
     def temporal_spatial_shape(self, name):
         property_dict = self._results.get(name)
         shape_list = [len(property_dict)]
+        #Throwing error : AttributeError: 'numpy.ndarray' object has no attribute 'keys' 
         for shape in property_dict[list(property_dict.keys())[0]].shape:
             shape_list.append(shape)
         return tuple(shape_list)
